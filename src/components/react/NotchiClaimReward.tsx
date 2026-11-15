@@ -9,10 +9,10 @@ import {
   Sparkles,
   ShieldCheck,
   AlertCircle,
-  Flame,
   RefreshCw,
+  Lock,
 } from "lucide-react";
-import { calculateDropRates, type RewardRarity } from "../../lib/rewards-catalog";
+import type { RewardRarity } from "../../lib/rewards-catalog";
 
 interface ClaimRewardData {
   code: string;
@@ -43,7 +43,6 @@ export default function NotchiClaimReward({
   siteKey = "",
 }: NotchiClaimRewardProps) {
   const isId = locale === "id";
-  const dropRates = calculateDropRates();
 
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
@@ -230,8 +229,7 @@ export default function NotchiClaimReward({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-800">
           <div>
             <div className="flex items-center gap-2">
-              <Flame className="size-4 text-orange-400" />
-              <span className="text-xs font-mono uppercase tracking-wider text-orange-400 font-medium">
+              <span className="text-xs font-mono uppercase tracking-wider text-blue-400 font-medium">
                 {isId ? "Progres Target Komunitas" : "Community Milestone Goal"}
               </span>
             </div>
@@ -252,13 +250,12 @@ export default function NotchiClaimReward({
                 {isId ? "Memeriksa status..." : "Checking status..."}
               </span>
             ) : isOpen ? (
-              <span className="inline-flex items-center gap-1.5 border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-mono text-emerald-400 font-semibold">
-                <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 border border-blue-500/40 bg-blue-500/10 px-3 py-1.5 text-xs font-mono text-blue-400 font-semibold">
+                <span className="size-2 rounded-full bg-blue-400 animate-pulse" />
                 {isId ? "KLAIM DIBUKA" : "CLAIMS OPEN"}
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-400 font-semibold">
-                <span className="size-2 rounded-full bg-amber-400" />
+              <span className="inline-flex items-center gap-1.5 border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs font-mono text-neutral-400 font-semibold">
                 {isId ? "SEGERA HADIR" : "COMING SOON"}
               </span>
             )}
@@ -273,7 +270,7 @@ export default function NotchiClaimReward({
           </div>
           <div className="h-2 w-full bg-neutral-800 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-600 via-indigo-500 to-emerald-500 transition-all duration-700"
+              className="h-full bg-blue-600 transition-all duration-700"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -300,10 +297,16 @@ export default function NotchiClaimReward({
 
             {/* Visual Preview Box */}
             <div
-              className="relative w-full h-36 sm:h-44 border border-neutral-800 flex items-center justify-between p-6 overflow-hidden"
+              className="relative w-full h-40 sm:h-52 border border-neutral-800 flex items-center justify-between p-6 overflow-hidden bg-neutral-950"
               style={{ background: claimData.bg.previewColor }}
             >
-              <div className="z-10 bg-neutral-950/80 backdrop-blur-md border border-neutral-800 p-4 max-w-xs">
+              <img
+                src={claimData.bg.previewUrl || `/images/rewards/${claimData.bg.id}_teaser.webp`}
+                alt={claimData.bg.name}
+                className="absolute inset-0 w-full h-full object-cover object-center blur-md scale-110"
+              />
+              <div className="absolute inset-0 bg-neutral-950/60 backdrop-blur-[1px]" />
+              <div className="relative z-10 bg-neutral-950/90 backdrop-blur-md border border-neutral-800 p-4 max-w-xs">
                 <div className="flex items-center gap-2">
                   <span
                     className={`border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider ${getRarityBadge(
@@ -316,12 +319,12 @@ export default function NotchiClaimReward({
                     #{String(claimData.claimNumber).padStart(4, "0")}
                   </span>
                 </div>
-                <h4 className="text-base font-semibold text-white mt-1">{claimData.bg.name}</h4>
+                <h4 className="text-base font-semibold text-white mt-1.5">{claimData.bg.name}</h4>
               </div>
 
-              <div className="z-10 hidden sm:block text-right">
-                <span className="text-[10px] font-mono text-white/60 uppercase tracking-widest block">
-                  Notchi PC Theme
+              <div className="relative z-10 hidden sm:block text-right bg-neutral-950/80 backdrop-blur-md border border-neutral-800 px-3 py-2">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest block">
+                  Notchi Theme
                 </span>
                 <span className="text-xs font-mono text-white font-medium">Edition v2</span>
               </div>
@@ -381,7 +384,7 @@ export default function NotchiClaimReward({
         ) : isOpen ? (
           /* ACTION STATE: CLAIMS ARE OPEN */
           <div className="max-w-xl mx-auto space-y-6 text-center">
-            <div className="inline-flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-mono text-emerald-400">
+            <div className="inline-flex items-center gap-2 border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-mono text-blue-400">
               <Gift className="size-3.5" />
               <span>{isId ? "Sesi Klaim Terbuka" : "Claim Session Open"}</span>
             </div>
@@ -392,8 +395,8 @@ export default function NotchiClaimReward({
               </h3>
               <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed font-normal">
                 {isId
-                  ? "Satu klik untuk mengundi salah satu dari 7 desain latar belakang notch eksklusif dengan sistem probabilitas berbobot transparan."
-                  : "One-click draw for one of 7 exclusive notch background designs with transparent weighted probabilities."}
+                  ? "Satu klik untuk mengundi desain latar belakang notch eksklusif dengan sistem probabilitas acak transparan."
+                  : "One-click draw for an exclusive notch background design with transparent random probabilities."}
               </p>
             </div>
 
@@ -495,38 +498,90 @@ export default function NotchiClaimReward({
         </div>
       </div>
 
-      {/* 4. Drop Rates & Odds Transparency */}
+      {/* 4. Exclusive Rewards Preview Showcase */}
       <div className="border border-neutral-800 bg-neutral-950 p-6 sm:p-8 space-y-6">
-        <div>
-          <span className="text-xs font-mono text-neutral-500 uppercase tracking-wider block">
-            {isId ? "Transparansi Sistem" : "System Transparency"}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800/80 pb-4">
+          <div>
+            <span className="text-xs font-mono text-blue-400 uppercase tracking-wider block">
+              {isId ? "Koleksi Hadiah Milestone" : "Milestone Reward Collection"}
+            </span>
+            <h3 className="text-lg font-semibold text-white tracking-tight mt-1">
+              {isId ? "Pratinjau Background Eksklusif" : "Exclusive Background Previews"}
+            </h3>
+          </div>
+          <span className="text-xs font-mono text-neutral-400">
+            {isId ? "Tersedia di Notchi PC" : "Compatible with Notchi PC"}
           </span>
-          <h3 className="text-lg font-semibold text-white tracking-tight mt-1">
-            {isId ? "Peluang Undian Hadiah (Drop Rates)" : "Gacha Drop Rates & Probabilities"}
-          </h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {dropRates.map((item) => (
-            <div
-              key={item.id}
-              className="border border-neutral-800/80 bg-neutral-900/40 p-3.5 flex items-center justify-between"
-            >
-              <div>
-                <span className="text-xs font-medium text-white block">{item.name}</span>
-                <span
-                  className={`border px-1.5 py-0.2 text-[9px] font-mono uppercase tracking-wider mt-1 inline-block ${getRarityBadge(
-                    item.rarity
-                  )}`}
-                >
-                  {item.rarity}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card 1: Ripple Wings */}
+          <div className="border border-neutral-800 bg-neutral-900/40 p-4 space-y-4 rounded-none group hover:border-blue-500/50 transition-colors">
+            <div className="relative aspect-[16/9] w-full overflow-hidden border border-neutral-800 bg-neutral-950">
+              <img
+                src="/images/rewards/bg_01_teaser.webp"
+                alt="Ripple Wings"
+                className="w-full h-full object-cover object-center blur-md scale-110 group-hover:scale-125 transition-transform duration-700"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-neutral-950/30 flex items-center justify-center">
+                <span className="inline-flex items-center gap-1.5 border border-neutral-700/80 bg-neutral-950/80 px-2.5 py-1 text-[11px] font-mono text-neutral-300 backdrop-blur-md">
+                  <Lock className="size-3 text-blue-400" />
+                  <span>{isId ? "Teaser Rahasia" : "Mystery Teaser"}</span>
                 </span>
               </div>
-              <span className="text-xs font-mono font-semibold text-neutral-300">
-                {item.percentage}%
-              </span>
+              <div className="absolute top-2.5 left-2.5">
+                <span className="border border-purple-500/40 bg-neutral-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono text-purple-400 uppercase font-semibold">
+                  Epic
+                </span>
+              </div>
             </div>
-          ))}
+            <div>
+              <div className="flex items-center justify-between">
+                <h4 className="text-base font-semibold text-white tracking-tight">Ripple Wings</h4>
+                <span className="text-xs font-mono text-blue-400 font-medium">50% Rate</span>
+              </div>
+              <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                {isId
+                  ? "Desain sayap bergelombang dinamis dengan aksen neon elegan untuk mempercantik overlay notch desktop kamu."
+                  : "Dynamic flowing wing motifs with subtle ambient illumination crafted for Notchi overlay."}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Midnight Bloom */}
+          <div className="border border-neutral-800 bg-neutral-900/40 p-4 space-y-4 rounded-none group hover:border-blue-500/50 transition-colors">
+            <div className="relative aspect-[16/9] w-full overflow-hidden border border-neutral-800 bg-neutral-950">
+              <img
+                src="/images/rewards/bg_02_teaser.webp"
+                alt="Midnight Bloom"
+                className="w-full h-full object-cover object-center blur-md scale-110 group-hover:scale-125 transition-transform duration-700"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-neutral-950/30 flex items-center justify-center">
+                <span className="inline-flex items-center gap-1.5 border border-neutral-700/80 bg-neutral-950/80 px-2.5 py-1 text-[11px] font-mono text-neutral-300 backdrop-blur-md">
+                  <Lock className="size-3 text-blue-400" />
+                  <span>{isId ? "Teaser Rahasia" : "Mystery Teaser"}</span>
+                </span>
+              </div>
+              <div className="absolute top-2.5 left-2.5">
+                <span className="border border-purple-500/40 bg-neutral-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono text-purple-400 uppercase font-semibold">
+                  Epic
+                </span>
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between">
+                <h4 className="text-base font-semibold text-white tracking-tight">Midnight Bloom</h4>
+                <span className="text-xs font-mono text-blue-400 font-medium">50% Rate</span>
+              </div>
+              <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                {isId
+                  ? "Nuansa kelopak malam dengan perpaduan gradasi floral gelap berkelas untuk pengalaman visual notch modern."
+                  : "Dark floral botanical aesthetic with layered nocturnal accents for a clean, sleek desktop look."}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
