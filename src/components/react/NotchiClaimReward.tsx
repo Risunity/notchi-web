@@ -13,6 +13,7 @@ import {
   Lock,
 } from "lucide-react";
 import type { RewardRarity } from "../../lib/rewards-catalog";
+import { REWARDS_CATALOG, calculateDropRates } from "../../lib/rewards-catalog";
 
 interface ClaimRewardData {
   code: string;
@@ -69,14 +70,15 @@ export default function NotchiClaimReward({
     async function checkStatus() {
       try {
         const res = await fetch("/api/claim-status");
+        const reached = totalDownloads >= (milestoneTarget || 100);
         if (res.ok) {
           const json = await res.json();
-          setIsOpen(Boolean(json.isOpen));
+          setIsOpen(Boolean(json.isOpen) || reached);
         } else {
-          setIsOpen(false);
+          setIsOpen(reached);
         }
       } catch {
-        setIsOpen(false);
+        setIsOpen(totalDownloads >= (milestoneTarget || 100));
       } finally {
         setIsLoadingStatus(false);
       }
@@ -133,11 +135,17 @@ export default function NotchiClaimReward({
       const json = await res.json();
 
       if (!res.ok || !json.success) {
-        if (json.error === "rate_limited") {
+        if (json.error === "already_claimed") {
           throw new Error(
             isId
-              ? "Batas klaim harian untuk jaringan ini telah tercapai (maksimal 3 per hari)."
-              : "Daily claim limit reached for this network (maximum 3 per day)."
+              ? "Anda sudah pernah melakukan klaim hadiah. Setiap pengguna hanya berhak mendapatkan 1 kode klaim."
+              : "You have already claimed a reward code. Only 1 claim is allowed per user."
+          );
+        } else if (json.error === "rate_limited") {
+          throw new Error(
+            isId
+              ? "Terlalu banyak permintaan. Silakan tunggu beberapa saat lagi."
+              : "Too many requests. Please wait a moment before trying again."
           );
         } else if (json.error === "claims_closed") {
           throw new Error(
@@ -370,16 +378,6 @@ export default function NotchiClaimReward({
                 </p>
               </div>
             </div>
-
-            {/* Claim Another Code button */}
-            <div className="text-center pt-2">
-              <button
-                onClick={() => setClaimData(null)}
-                className="text-xs font-mono text-neutral-500 hover:text-neutral-300 transition-colors underline"
-              >
-                {isId ? "Klaim kode lain (maks 3/hari)" : "Claim another code (max 3/day)"}
-              </button>
-            </div>
           </div>
         ) : isOpen ? (
           /* ACTION STATE: CLAIMS ARE OPEN */
@@ -514,74 +512,56 @@ export default function NotchiClaimReward({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card 1: Ripple Wings */}
-          <div className="border border-neutral-800 bg-neutral-900/40 p-4 space-y-4 rounded-none group hover:border-blue-500/50 transition-colors">
-            <div className="relative aspect-[16/9] w-full overflow-hidden border border-neutral-800 bg-neutral-950">
-              <img
-                src="/images/rewards/bg_01_teaser.webp"
-                alt="Ripple Wings"
-                className="w-full h-full object-cover object-center blur-md scale-110 group-hover:scale-125 transition-transform duration-700"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-neutral-950/30 flex items-center justify-center">
-                <span className="inline-flex items-center gap-1.5 border border-neutral-700/80 bg-neutral-950/80 px-2.5 py-1 text-[11px] font-mono text-neutral-300 backdrop-blur-md">
-                  <Lock className="size-3 text-blue-400" />
-                  <span>{isId ? "Teaser Rahasia" : "Mystery Teaser"}</span>
-                </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {calculateDropRates().map((rate) => {
+            const item = REWARDS_CATALOG.find((r) => r.id === rate.id)!;
+            const rarityStyle: Record<string, { border: string; text: string; label: string }> = {
+              legendary: { border: "border-yellow-500/40", text: "text-yellow-400", label: "Legendary" },
+              epic:      { border: "border-purple-500/40", text: "text-purple-400", label: "Epic" },
+              rare:      { border: "border-blue-500/40",   text: "text-blue-400",   label: "Rare" },
+              common:    { border: "border-neutral-500/40", text: "text-neutral-400", label: "Common" },
+            };
+            const style = rarityStyle[item.rarity] ?? rarityStyle.common;
+            return (
+              <div key={item.id} className="border border-neutral-800 bg-neutral-900/40 p-4 space-y-4 rounded-none group hover:border-blue-500/50 transition-colors">
+                <div className="relative aspect-[16/9] w-full overflow-hidden border border-neutral-800 bg-neutral-950">
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover object-center blur-md scale-110 group-hover:scale-125 transition-transform duration-700"
+                      loading="lazy"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-neutral-950/30 flex items-center justify-center">
+                    <span className="inline-flex items-center gap-1.5 border border-neutral-700/80 bg-neutral-950/80 px-2.5 py-1 text-[11px] font-mono text-neutral-300 backdrop-blur-md">
+                      <Lock className="size-3 text-blue-400" />
+                      <span>{isId ? "Teaser Rahasia" : "Mystery Teaser"}</span>
+                    </span>
+                  </div>
+                  <div className="absolute top-2.5 left-2.5">
+                    <span className={`border ${style.border} bg-neutral-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono ${style.text} uppercase font-semibold`}>
+                      {style.label}
+                    </span>
+                  </div>
+                  {item.quota && (
+                    <div className="absolute top-2.5 right-2.5">
+                      <span className="border border-amber-500/50 bg-amber-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono text-amber-300 font-semibold uppercase tracking-wider">
+                        {isId ? `Batas ${item.quota} Unit` : `Limit: ${item.quota} Only`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-base font-semibold text-white tracking-tight">{item.name}</h4>
+                    <span className="text-xs font-mono text-blue-400 font-medium">{rate.percentage}% Rate</span>
+                  </div>
+                  <p className="text-xs text-neutral-400 mt-1 leading-relaxed">{item.description}</p>
+                </div>
               </div>
-              <div className="absolute top-2.5 left-2.5">
-                <span className="border border-purple-500/40 bg-neutral-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono text-purple-400 uppercase font-semibold">
-                  Epic
-                </span>
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <h4 className="text-base font-semibold text-white tracking-tight">Ripple Wings</h4>
-                <span className="text-xs font-mono text-blue-400 font-medium">50% Rate</span>
-              </div>
-              <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                {isId
-                  ? "Desain sayap bergelombang dinamis dengan aksen neon elegan untuk mempercantik overlay notch desktop kamu."
-                  : "Dynamic flowing wing motifs with subtle ambient illumination crafted for Notchi overlay."}
-              </p>
-            </div>
-          </div>
-
-          {/* Card 2: Midnight Bloom */}
-          <div className="border border-neutral-800 bg-neutral-900/40 p-4 space-y-4 rounded-none group hover:border-blue-500/50 transition-colors">
-            <div className="relative aspect-[16/9] w-full overflow-hidden border border-neutral-800 bg-neutral-950">
-              <img
-                src="/images/rewards/bg_02_teaser.webp"
-                alt="Midnight Bloom"
-                className="w-full h-full object-cover object-center blur-md scale-110 group-hover:scale-125 transition-transform duration-700"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-neutral-950/30 flex items-center justify-center">
-                <span className="inline-flex items-center gap-1.5 border border-neutral-700/80 bg-neutral-950/80 px-2.5 py-1 text-[11px] font-mono text-neutral-300 backdrop-blur-md">
-                  <Lock className="size-3 text-blue-400" />
-                  <span>{isId ? "Teaser Rahasia" : "Mystery Teaser"}</span>
-                </span>
-              </div>
-              <div className="absolute top-2.5 left-2.5">
-                <span className="border border-purple-500/40 bg-neutral-950/80 backdrop-blur-md px-2 py-0.5 text-[10px] font-mono text-purple-400 uppercase font-semibold">
-                  Epic
-                </span>
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <h4 className="text-base font-semibold text-white tracking-tight">Midnight Bloom</h4>
-                <span className="text-xs font-mono text-blue-400 font-medium">50% Rate</span>
-              </div>
-              <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                {isId
-                  ? "Nuansa kelopak malam dengan perpaduan gradasi floral gelap berkelas untuk pengalaman visual notch modern."
-                  : "Dark floral botanical aesthetic with layered nocturnal accents for a clean, sleek desktop look."}
-              </p>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </div>
     </div>

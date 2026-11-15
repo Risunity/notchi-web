@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getRedis } from '../src/lib/redis';
+import { getRedis } from '../src/lib/redis.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   query?: Record<string, string>;
@@ -9,6 +9,39 @@ interface ExtendedResponse extends ServerResponse {
   status: (statusCode: number) => ExtendedResponse;
   json: (data: unknown) => void;
   setHeader: (name: string, value: string) => this;
+}
+
+async function checkMilestoneAchieved(redis?: ReturnType<typeof getRedis>): Promise<boolean> {
+  try {
+    const headers: Record<string, string> = {
+      'User-Agent': 'Notchi-Milestone-Checker',
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+    const res = await fetch('https://api.github.com/repos/Risunity/Notchi/releases?per_page=100', { headers });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!Array.isArray(data)) return false;
+    let total = 0;
+    for (const r of data) {
+      for (const a of (r.assets || [])) {
+        if (!a.name?.endsWith('.sha256') && !a.name?.endsWith('.md5')) {
+          total += (a.download_count || 0);
+        }
+      }
+    }
+    if (total >= 100) {
+      if (redis) {
+        // Begitu target 100 tercapai, kunci status claims:open = '1' permanen di Redis
+        await redis.set('claims:open', '1');
+      }
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export default async function handler(req: ExtendedRequest, res: ExtendedResponse) {
@@ -31,7 +64,8 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
       redis.get<string | number>('claim:counter'),
     ]);
 
-    const isOpen = isOpenVal === '1' || isOpenVal === 'true';
+    const isManualOpen = String(isOpenVal) === '1' || String(isOpenVal).toLowerCase() === 'true';
+    const isOpen = isManualOpen || (await checkMilestoneAchieved(redis));
     const totalClaims = Number(counterVal) || 0;
 
     return res.status(200).json({

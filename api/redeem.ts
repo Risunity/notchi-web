@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getRedis } from '../src/lib/redis';
-import { isValidCodeFormat, normalizeClaimCode } from '../src/lib/code';
-import { getClientIp, hashIp, checkRateLimit } from '../src/lib/security';
-import { createEntitlement } from '../src/lib/entitlement';
+import { getRedis } from '../src/lib/redis.ts';
+import { isValidCodeFormat, normalizeClaimCode } from '../src/lib/code.ts';
+import { getClientIp, hashIp, checkRateLimit } from '../src/lib/security.ts';
+import { createEntitlement } from '../src/lib/entitlement.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   body?: unknown;

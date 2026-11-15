@@ -12,12 +12,16 @@ export interface EntitlementPayload {
 }
 
 function normalizeKey(keyStr: string): string {
-  const trimmed = (keyStr || '').trim();
+  let trimmed = (keyStr || '').trim();
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    trimmed = trimmed.slice(1, -1).trim();
+  }
+  trimmed = trimmed.replace(/\\n/g, '\n');
   if (trimmed.startsWith('-----BEGIN')) {
     return trimmed;
   }
   try {
-    const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
+    const decoded = Buffer.from(trimmed, 'base64').toString('utf8').replace(/\\n/g, '\n');
     if (decoded.includes('-----BEGIN')) {
       return decoded;
     }

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getRedis } from '../src/lib/redis';
-import { isValidCodeFormat, normalizeClaimCode } from '../src/lib/code';
+import { getRedis } from '../src/lib/redis.ts';
+import { isValidCodeFormat, normalizeClaimCode } from '../src/lib/code.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   body?: unknown;

@@ -1,7 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getRedis } from '../src/lib/redis';
-import { verifyEntitlement } from '../src/lib/entitlement';
-import { getClientIp, hashIp, checkRateLimit } from '../src/lib/security';
+import fs from 'node:fs';
+import path from 'node:path';
+import { get as getBlob } from '@vercel/blob';
+import { getRedis } from '../src/lib/redis.ts';
+import { verifyEntitlement } from '../src/lib/entitlement.ts';
+import { getClientIp, hashIp, checkRateLimit } from '../src/lib/security.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   headers: Record<string, string | string[] | undefined>;
@@ -27,15 +30,26 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
   }
 
   try {
+    const urlObj = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const downloadType = urlObj.searchParams.get('download'); // 'expand' | 'compact'
+    const queryToken = urlObj.searchParams.get('token');
+
+    // Extract Bearer token from Authorization header or ?token= query param
     const authHeader = String(req.headers.authorization || req.headers.Authorization || '');
-    if (!authHeader.startsWith('Bearer ')) {
+    let token = '';
+    if (authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7).trim();
+    } else if (queryToken) {
+      token = queryToken.trim();
+    }
+
+    if (!token) {
       return res.status(401).json({
         error: 'unauthorized',
-        message: 'Bearer entitlement token is required in Authorization header.',
+        message: 'Bearer entitlement token is required in Authorization header or token query parameter.',
       });
     }
 
-    const token = authHeader.slice(7).trim();
     const keyPem = process.env.ENTITLEMENT_PRIVATE_KEY || process.env.ENTITLEMENT_PUBLIC_KEY;
     if (!keyPem) {
       throw new Error('Entitlement verification key is not configured on the server');
@@ -49,8 +63,68 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
       });
     }
 
-    // Rate limit per IP (60 requests per hour)
     const redis = getRedis();
+
+    // 1. Direct asset download handling (proxy from private Blob or local disk)
+    if (downloadType === 'expand' || downloadType === 'compact') {
+      const filename = `${payload.bg_id}_${downloadType}.png`;
+      const localFilePath = path.resolve('rewards-src', filename);
+
+      // A. Fast-path: local rewards-src if available (e.g. during local dev)
+      if (fs.existsSync(localFilePath)) {
+        const fileBuf = fs.readFileSync(localFilePath);
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Content-Length', String(fileBuf.length));
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.writeHead(200);
+        return res.end(fileBuf);
+      }
+
+      // B. Fetch from private Vercel Blob using server token
+      const bgMeta = await redis.hgetall<Record<string, string>>(`bg:${payload.bg_id}`);
+      const blobUrl = downloadType === 'expand' ? bgMeta?.url_expand : bgMeta?.url_compact;
+
+      if (!blobUrl) {
+        return res.status(404).json({
+          error: 'asset_not_found',
+          message: `Asset for ${payload.bg_id} (${downloadType}) is not registered in storage.`,
+        });
+      }
+
+      try {
+        const blobResp = await getBlob(blobUrl, {
+          access: 'private',
+          token: process.env.BLOB_READ_WRITE_TOKEN,
+        });
+
+        if (!blobResp || blobResp.statusCode !== 200 || !blobResp.stream) {
+          return res.status(502).json({
+            error: 'blob_fetch_failed',
+            message: 'Failed to retrieve asset from private storage.',
+          });
+        }
+
+        res.setHeader('Content-Type', blobResp.blob.contentType || 'image/png');
+        if (blobResp.blob.size) {
+          res.setHeader('Content-Length', String(blobResp.blob.size));
+        }
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.writeHead(200);
+
+        for await (const chunk of blobResp.stream) {
+          res.write(chunk);
+        }
+        return res.end();
+      } catch (blobErr) {
+        console.error('[api/assets] Blob stream error:', blobErr);
+        return res.status(502).json({
+          error: 'storage_error',
+          message: 'Error streaming asset from storage.',
+        });
+      }
+    }
+
+    // 2. Metadata URL response (returns authenticated proxy download URLs)
     const clientIp = getClientIp(req.headers);
     const ipHash = hashIp(clientIp);
     const rateLimit = await checkRateLimit(redis, `rl:assets:${ipHash}`, 60, 3600);
@@ -61,15 +135,19 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
       });
     }
 
-    // Fetch Blob URLs stored in Redis
-    const bgMeta = await redis.hgetall<Record<string, string>>(`bg:${payload.bg_id}`);
+    const proto = req.headers['x-forwarded-proto'] || (String(req.headers.host || '').includes('localhost') ? 'http' : 'https');
+    const host = req.headers.host || 'localhost:4321';
+    const baseUrl = `${proto}://${host}`;
+
+    const expandUrl = `${baseUrl}/api/assets?download=expand&token=${encodeURIComponent(token)}`;
+    const compactUrl = `${baseUrl}/api/assets?download=compact&token=${encodeURIComponent(token)}`;
 
     return res.status(200).json({
       success: true,
       bgId: payload.bg_id,
       rarity: payload.rarity,
-      expand: bgMeta?.url_expand || null,
-      compact: bgMeta?.url_compact || null,
+      expand: expandUrl,
+      compact: compactUrl,
     });
   } catch (err) {
     console.error('[api/assets] Internal error:', err);

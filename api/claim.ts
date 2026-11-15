@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getRedis } from '../src/lib/redis';
-import { rollGachaReward } from '../src/lib/gacha';
-import { generateClaimCode } from '../src/lib/code';
-import { getClientIp, hashIp, checkRateLimit, verifyTurnstileToken } from '../src/lib/security';
+import { getRedis } from '../src/lib/redis.ts';
+import { rollGachaReward } from '../src/lib/gacha.ts';
+import { generateClaimCode } from '../src/lib/code.ts';
+import { getClientIp, hashIp, checkRateLimit, verifyTurnstileToken } from '../src/lib/security.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   body?: unknown;
@@ -12,6 +12,39 @@ interface ExtendedResponse extends ServerResponse {
   status: (statusCode: number) => ExtendedResponse;
   json: (data: unknown) => void;
   setHeader: (name: string, value: string) => this;
+}
+
+async function checkMilestoneAchieved(redis?: ReturnType<typeof getRedis>): Promise<boolean> {
+  try {
+    const headers: Record<string, string> = {
+      'User-Agent': 'Notchi-Milestone-Checker',
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+    }
+    const res = await fetch('https://api.github.com/repos/Risunity/Notchi/releases?per_page=100', { headers });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!Array.isArray(data)) return false;
+    let total = 0;
+    for (const r of data) {
+      for (const a of (r.assets || [])) {
+        if (!a.name?.endsWith('.sha256') && !a.name?.endsWith('.md5')) {
+          total += (a.download_count || 0);
+        }
+      }
+    }
+    if (total >= 100) {
+      if (redis) {
+        // Begitu target 100 tercapai, kunci status claims:open = '1' permanen di Redis
+        await redis.set('claims:open', '1');
+      }
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export default async function handler(req: ExtendedRequest, res: ExtendedResponse) {
@@ -35,11 +68,13 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
     const redis = getRedis();
 
     // 1. Check if claims are open
-    const isOpenVal = await redis.get<string>('claims:open');
-    if (isOpenVal !== '1' && isOpenVal !== 'true') {
+    const isOpenVal = await redis.get<string | number>('claims:open');
+    const isManualOpen = String(isOpenVal) === '1' || String(isOpenVal).toLowerCase() === 'true';
+    const isOpen = isManualOpen || (await checkMilestoneAchieved(redis));
+    if (!isOpen) {
       return res.status(403).json({
         error: 'claims_closed',
-        message: 'Reward claims are currently closed.',
+        message: 'Reward claims are currently closed until the 100 downloads milestone is achieved.',
       });
     }
 
@@ -55,12 +90,21 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
       });
     }
 
-    // 3. Rate limit per IP (3 claims per 24 hours = 86400s)
-    const rateLimit = await checkRateLimit(redis, `rl:claim:${ipHash}`, 3, 86400);
+    // 3. Enforce strictly 1 claim per user/network permanently
+    const alreadyClaimed = await redis.exists(`claimed:ip:${ipHash}`);
+    if (alreadyClaimed) {
+      return res.status(403).json({
+        error: 'already_claimed',
+        message: 'You have already claimed a reward code. Only 1 claim is allowed per user/network.',
+      });
+    }
+
+    // Rate limit per IP to deter automated flooding (10 attempts per minute)
+    const rateLimit = await checkRateLimit(redis, `rl:claim:${ipHash}`, 10, 60);
     if (!rateLimit.allowed) {
       return res.status(429).json({
         error: 'rate_limited',
-        message: 'Daily claim limit reached for this network (maximum 3 per day).',
+        message: 'Too many requests. Please wait a moment before trying again.',
       });
     }
 
@@ -89,6 +133,9 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
       created_at: new Date().toISOString(),
       ip_hash: ipHash,
     });
+
+    // Mark IP as claimed permanently (1 claim per user/network)
+    await redis.set(`claimed:ip:${ipHash}`, code);
 
     // 8. Fetch preview URL if uploaded to Blob
     const bgMeta = await redis.hgetall<Record<string, string>>(`bg:${reward.id}`);

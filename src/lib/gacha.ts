@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 import type { Redis } from '@upstash/redis';
-import { REWARDS_CATALOG, type RewardItem } from './rewards-catalog';
+import { REWARDS_CATALOG, type RewardItem } from './rewards-catalog.ts';
 
 /**
  * Picks a reward item from candidates using cryptographic randomInt based on weights.

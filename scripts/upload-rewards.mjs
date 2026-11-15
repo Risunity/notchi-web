@@ -45,16 +45,18 @@ async function uploadFile(fileName) {
   if (!fs.existsSync(filePath)) return null;
 
   const fileBuffer = fs.readFileSync(filePath);
-  console.log(`Uploading ${fileName} to Vercel Blob (private)...`);
+  console.log(`Uploading ${fileName} to Vercel Blob...`);
 
+  const isPng = fileName.endsWith('.png');
   const blob = await put(`rewards/${fileName}`, fileBuffer, {
     access: 'private',
-    contentType: 'image/webp',
+    contentType: isPng ? 'image/png' : 'image/webp',
     allowOverwrite: true,
     token: blobToken,
   });
 
-  return blob.pathname;
+  console.log(`  -> URL: ${blob.url}`);
+  return blob.url;
 }
 
 async function main() {
@@ -62,21 +64,31 @@ async function main() {
 
   for (let i = 1; i <= 7; i++) {
     const bgId = `bg_0${i}`;
-    const expandFile = `${bgId}_expand.webp`;
-    const compactFile = `${bgId}_compact.webp`;
+    const expandFile = fs.existsSync(path.join(SOURCE_DIR, `${bgId}_expand.png`))
+      ? `${bgId}_expand.png`
+      : `${bgId}_expand.webp`;
+    const compactFile = fs.existsSync(path.join(SOURCE_DIR, `${bgId}_compact.png`))
+      ? `${bgId}_compact.png`
+      : `${bgId}_compact.webp`;
 
     console.log(`--- Processing [${bgId}] ---`);
-    const pathExpand = await uploadFile(expandFile);
-    const pathCompact = await uploadFile(compactFile);
+    const urlExpand = await uploadFile(expandFile);
+    const urlCompact = await uploadFile(compactFile);
 
-    if (!pathExpand && !pathCompact) {
+    if (!urlExpand && !urlCompact) {
       console.log(`Skipped ${bgId}: no files found in ${SOURCE_DIR}\n`);
       continue;
     }
 
     const payload = {};
-    if (pathExpand) payload.path_expand = pathExpand;
-    if (pathCompact) payload.path_compact = pathCompact;
+    if (urlExpand) {
+      payload.url_expand = urlExpand;
+      payload.path_expand = urlExpand;
+    }
+    if (urlCompact) {
+      payload.url_compact = urlCompact;
+      payload.path_compact = urlCompact;
+    }
 
     await redis.hset(`bg:${bgId}`, payload);
     console.log(`Saved ${bgId} to Redis:`, payload, '\n');
