@@ -33,3 +33,5 @@ Thumbs.db
 
 # Local planning document (not published)
 PLAN.md
+.vercel
+.env*

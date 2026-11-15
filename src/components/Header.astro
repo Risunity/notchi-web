@@ -22,7 +22,6 @@ const teamHref = localizePath(siteConfig.routes.team, locale);
 const links = [
   { href: homeHref, path: '/', label: t(locale, 'nav.home') },
   { href: versionsHref, path: siteConfig.routes.download, label: 'Installer' },
-  { href: claimHref, path: siteConfig.routes.claim, label: t(locale, 'nav.claim') },
   { href: docsHref, path: siteConfig.routes.docs, label: t(locale, 'nav.docs') },
   { href: teamHref, path: siteConfig.routes.team, label: t(locale, 'nav.team') },
 ];
@@ -77,6 +76,19 @@ const totalDownloads = releases.reduce((sum, release) => {
     </div>
 
     <div class="flex items-center gap-2">
+      <a
+        href={claimHref}
+        class="inline-flex h-8 items-center gap-1.5 bg-red-600 hover:bg-red-500 text-white px-2.5 sm:px-3 text-xs font-semibold tracking-wide transition-colors shadow-sm"
+        title={locale === 'id' ? 'Klaim Hadiah Milestone' : 'Claim Milestone Rewards'}
+      >
+        <svg class="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="8" width="18" height="4" rx="1"/>
+          <path d="M12 8v13"/>
+          <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/>
+          <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>
+        </svg>
+        <span>{t(locale, 'nav.claim')}</span>
+      </a>
       <LangSwitcher locale={locale} />
       <div
         class="inline-flex h-8 items-center border border-neutral-800 bg-neutral-900 text-white"
