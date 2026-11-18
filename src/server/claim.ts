@@ -140,14 +140,28 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
     }
 
     // 7. Store claim details in Redis hash
+    const nowIso = new Date().toISOString();
     await redis.hset(`claim:${code}`, {
       claim_number: claimNumber,
       bg_id: reward.id,
       badge_id: reward.badgeId,
       rarity: reward.rarity,
-      created_at: new Date().toISOString(),
+      created_at: nowIso,
       ip_hash: ipHash,
     });
+
+    // Append to public claims ledger/history (keeps last 100 claims)
+    await redis.lpush(
+      'claims:history',
+      JSON.stringify({
+        claimNumber,
+        bgId: reward.id,
+        badgeId: reward.badgeId,
+        rarity: reward.rarity,
+        createdAt: nowIso,
+      })
+    );
+    await redis.ltrim('claims:history', 0, 99);
 
     // Mark IP as claimed permanently (1 claim per user/network)
     await redis.set(`claimed:ip:${ipHash}`, code);

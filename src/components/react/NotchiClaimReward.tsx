@@ -11,6 +11,7 @@ import {
   AlertCircle,
   RefreshCw,
   Lock,
+  History,
 } from "lucide-react";
 import type { RewardRarity } from "../../lib/rewards-catalog";
 import { REWARDS_CATALOG, calculateDropRates } from "../../lib/rewards-catalog";
@@ -28,11 +29,38 @@ interface ClaimRewardData {
   };
 }
 
+export interface ClaimHistoryItem {
+  claimNumber: number;
+  bgId: string;
+  bgName: string;
+  badgeId: string;
+  rarity: string;
+  previewColor: string;
+  image?: string;
+  createdAt: string;
+}
+
 interface NotchiClaimRewardProps {
   locale?: string;
   totalDownloads: number;
   milestoneTarget?: number;
   siteKey?: string;
+}
+
+function formatClaimDate(dateStr: string, isId: boolean): string {
+  if (!dateStr) return "-";
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString(isId ? "id-ID" : "en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return dateStr;
+  }
 }
 
 const STORAGE_KEY = "notchi_reward_claim";
@@ -52,6 +80,8 @@ export default function NotchiClaimReward({
   const [claimData, setClaimData] = useState<ClaimRewardData | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [claimsHistory, setClaimsHistory] = useState<ClaimHistoryItem[]>([]);
+  const [totalClaimsCount, setTotalClaimsCount] = useState<number>(0);
 
   const turnstileContainerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
@@ -73,16 +103,22 @@ export default function NotchiClaimReward({
         const reached = totalDownloads >= (milestoneTarget || 100);
         if (res.ok) {
           let json: any = null;
-      try {
-        json = await res.json();
-      } catch {
-        throw new Error(
-          isId
-            ? "Server sedang mengalami gangguan. Silakan coba lagi nanti."
-            : "A server error occurred. Please try again later."
-        );
-      }
+          try {
+            json = await res.json();
+          } catch {
+            throw new Error(
+              isId
+                ? "Server sedang mengalami gangguan. Silakan coba lagi nanti."
+                : "A server error occurred. Please try again later."
+            );
+          }
           setIsOpen(Boolean(json.isOpen) || reached);
+          if (Array.isArray(json.claimsHistory)) {
+            setClaimsHistory(json.claimsHistory);
+          }
+          if (typeof json.totalClaims === "number") {
+            setTotalClaimsCount(json.totalClaims);
+          }
         } else {
           setIsOpen(reached);
         }
@@ -186,6 +222,19 @@ export default function NotchiClaimReward({
       } catch {
         // Ignore localStorage quota
       }
+
+      // Prepend to history table
+      const newHistoryItem: ClaimHistoryItem = {
+        claimNumber: json.claimNumber,
+        bgId: json.bg.id,
+        bgName: json.bg.name,
+        badgeId: json.bg.id,
+        rarity: json.bg.rarity,
+        previewColor: json.bg.previewColor,
+        createdAt: new Date().toISOString(),
+      };
+      setClaimsHistory((prev) => [newHistoryItem, ...prev]);
+      setTotalClaimsCount((prev) => prev + 1);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Error processing claim");
     } finally {
@@ -581,6 +630,106 @@ export default function NotchiClaimReward({
             );
           })}
         </div>
+      </div>
+
+      {/* 5. Community Claims Ledger Table */}
+      <div className="border border-neutral-800 bg-neutral-950 p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-none border border-blue-500/30 bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <History className="size-4" />
+            </div>
+            <div>
+              <span className="text-xs font-mono text-blue-400 uppercase tracking-wider block">
+                {isId ? "Transparansi Komunitas" : "Community Transparency"}
+              </span>
+              <h3 className="text-lg font-semibold text-white tracking-tight mt-0.5">
+                {isId ? "Riwayat Klaim Background" : "Reward Claims Ledger"}
+              </h3>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 border border-neutral-800 bg-neutral-900/60 px-3 py-1 text-xs font-mono text-neutral-300">
+              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>
+                {totalClaimsCount} {isId ? "Klaim Tercatat" : "Rewards Claimed"}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        {claimsHistory.length === 0 ? (
+          <div className="border border-dashed border-neutral-800 p-8 text-center">
+            <p className="text-sm font-mono text-neutral-500">
+              {isId
+                ? "Belum ada klaim yang tercatat. Jadilah yang pertama!"
+                : "No rewards claimed yet. Be the first!"}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto border border-neutral-800 bg-neutral-900/20">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-neutral-900/70 border-b border-neutral-800 text-neutral-400 uppercase tracking-wider text-[11px]">
+                <tr>
+                  <th scope="col" className="px-4 py-3 font-semibold">No</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">{isId ? "Background" : "Background Theme"}</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">Rarity</th>
+                  <th scope="col" className="px-4 py-3 font-semibold">{isId ? "Waktu Klaim" : "Claimed At"}</th>
+                  <th scope="col" className="px-4 py-3 font-semibold text-right">{isId ? "Verifikasi" : "Status"}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800/60 font-sans">
+                {claimsHistory.map((item) => {
+                  const rarityStyle: Record<string, { badge: string; text: string }> = {
+                    legendary: { badge: "border-yellow-500/40 bg-yellow-500/10 text-yellow-400", text: "text-yellow-400" },
+                    epic:      { badge: "border-purple-500/40 bg-purple-500/10 text-purple-400", text: "text-purple-400" },
+                    rare:      { badge: "border-blue-500/40 bg-blue-500/10 text-blue-400",     text: "text-blue-400" },
+                    common:    { badge: "border-neutral-500/40 bg-neutral-500/10 text-neutral-400", text: "text-neutral-400" },
+                  };
+                  const rStyle = rarityStyle[item.rarity.toLowerCase()] ?? rarityStyle.common;
+
+                  return (
+                    <tr key={`${item.claimNumber}-${item.createdAt}`} className="hover:bg-neutral-800/30 transition-colors">
+                      <td className="px-4 py-3 font-mono font-bold text-white whitespace-nowrap">
+                        #{String(item.claimNumber).padStart(4, "0")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="size-7 border border-neutral-800 flex-shrink-0"
+                            style={{ background: item.previewColor }}
+                          />
+                          <div>
+                            <span className="font-medium text-white block tracking-tight">
+                              {item.bgName}
+                            </span>
+                            <span className="text-[11px] font-mono text-neutral-500 block">
+                              {item.bgId}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-mono uppercase font-semibold border ${rStyle.badge}`}>
+                          {item.rarity}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-neutral-400 whitespace-nowrap text-[11px]">
+                        {formatClaimDate(item.createdAt, isId)}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-400/90">
+                          <ShieldCheck className="size-3.5 text-emerald-400" />
+                          <span>Ed25519</span>
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

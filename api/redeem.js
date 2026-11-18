@@ -1,4 +1,4 @@
-// ../notchi-web-risu/src/lib/redis.ts
+// src/lib/redis.ts
 import { Redis } from "@upstash/redis";
 var redisInstance = null;
 function getRedis() {
@@ -18,7 +18,7 @@ function getRedis() {
   return redisInstance;
 }
 
-// ../notchi-web-risu/src/lib/code.ts
+// src/lib/code.ts
 function normalizeClaimCode(input) {
   return (input || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
 }
@@ -28,7 +28,7 @@ function isValidCodeFormat(code) {
   return regex.test(normalized);
 }
 
-// ../notchi-web-risu/src/lib/security.ts
+// src/lib/security.ts
 import { createHmac } from "node:crypto";
 function getClientIp(headers) {
   const getHeader = (name) => {
@@ -61,7 +61,7 @@ async function checkRateLimit(redis, key, maxLimit, ttlSeconds) {
   };
 }
 
-// ../notchi-web-risu/src/lib/entitlement.ts
+// src/lib/entitlement.ts
 import { sign, verify, createPrivateKey, createPublicKey } from "node:crypto";
 function normalizeKey(keyStr) {
   let trimmed = (keyStr || "").trim();
@@ -90,7 +90,7 @@ function createEntitlement(payload, privateKeyPem) {
   return `${data.toString("base64url")}.${signature.toString("base64url")}`;
 }
 
-// ../notchi-web-risu/src/server/redeem.ts
+// src/server/redeem.ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");

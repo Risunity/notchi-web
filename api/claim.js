@@ -1,4 +1,4 @@
-// ../notchi-web-risu/src/lib/redis.ts
+// src/lib/redis.ts
 import { Redis } from "@upstash/redis";
 var redisInstance = null;
 function getRedis() {
@@ -18,10 +18,10 @@ function getRedis() {
   return redisInstance;
 }
 
-// ../notchi-web-risu/src/lib/gacha.ts
+// src/lib/gacha.ts
 import { randomInt } from "node:crypto";
 
-// ../notchi-web-risu/src/lib/rewards-catalog.ts
+// src/lib/rewards-catalog.ts
 var REWARDS_CATALOG = [
   // --- 1. LEGENDARY (Limit 7 di dunia) ---
   {
@@ -108,7 +108,7 @@ var REWARDS_CATALOG = [
   }
 ];
 
-// ../notchi-web-risu/src/lib/gacha.ts
+// src/lib/gacha.ts
 function pickWeightedItem(candidates) {
   if (candidates.length === 0) {
     throw new Error("No candidate rewards available");
@@ -144,7 +144,7 @@ async function rollGachaReward(redis) {
   return REWARDS_CATALOG[0];
 }
 
-// ../notchi-web-risu/src/lib/code.ts
+// src/lib/code.ts
 import { randomInt as randomInt2 } from "node:crypto";
 var CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
 function generateClaimCode() {
@@ -153,7 +153,7 @@ function generateClaimCode() {
   return `NOTCHI-${seg1}-${seg2}`;
 }
 
-// ../notchi-web-risu/src/lib/security.ts
+// src/lib/security.ts
 import { createHmac } from "node:crypto";
 function getClientIp(headers) {
   const getHeader = (name) => {
@@ -209,7 +209,7 @@ async function verifyTurnstileToken(token, clientIp) {
   }
 }
 
-// ../notchi-web-risu/src/server/claim.ts
+// src/server/claim.ts
 async function checkMilestoneAchieved(redis) {
   try {
     const headers = {
@@ -308,14 +308,26 @@ async function handler(req, res) {
       code = generateClaimCode();
       attempts += 1;
     }
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
     await redis.hset(`claim:${code}`, {
       claim_number: claimNumber,
       bg_id: reward.id,
       badge_id: reward.badgeId,
       rarity: reward.rarity,
-      created_at: (/* @__PURE__ */ new Date()).toISOString(),
+      created_at: nowIso,
       ip_hash: ipHash
     });
+    await redis.lpush(
+      "claims:history",
+      JSON.stringify({
+        claimNumber,
+        bgId: reward.id,
+        badgeId: reward.badgeId,
+        rarity: reward.rarity,
+        createdAt: nowIso
+      })
+    );
+    await redis.ltrim("claims:history", 0, 99);
     await redis.set(`claimed:ip:${ipHash}`, code);
     const bgMeta = await redis.hgetall(`bg:${reward.id}`);
     const previewUrl = bgMeta?.url_compact || bgMeta?.url_expand || null;

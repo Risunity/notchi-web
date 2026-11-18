@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { getRedis } from '../lib/redis.ts';
+import { getRewardById } from '../lib/rewards-catalog.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   query?: Record<string, string>;
@@ -74,19 +75,42 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
 
   try {
     const redis = getRedis();
-    const [isOpenVal, counterVal] = await Promise.all([
+    const [isOpenVal, counterVal, rawHistory] = await Promise.all([
       redis.get<string>('claims:open'),
       redis.get<string | number>('claim:counter'),
+      redis.lrange<string>('claims:history', 0, 49),
     ]);
 
     const isManualOpen = String(isOpenVal) === '1' || String(isOpenVal).toLowerCase() === 'true';
     const isOpen = isManualOpen || (await checkMilestoneAchieved(redis));
     const totalClaims = Number(counterVal) || 0;
 
+    const claimsHistory = (rawHistory || [])
+      .map((item) => {
+        try {
+          const parsed = typeof item === 'string' ? JSON.parse(item) : item;
+          const catalogItem = getRewardById(parsed.bgId);
+          return {
+            claimNumber: Number(parsed.claimNumber) || 0,
+            bgId: String(parsed.bgId),
+            bgName: catalogItem?.name || String(parsed.bgId),
+            badgeId: String(parsed.badgeId),
+            rarity: (catalogItem?.rarity || parsed.rarity || 'common') as string,
+            previewColor: catalogItem?.previewColor || 'linear-gradient(135deg, #1e1b4b, #09090b)',
+            image: catalogItem?.image || '',
+            createdAt: String(parsed.createdAt || ''),
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
     return res.status(200).json({
       status: 'success',
       isOpen,
       totalClaims,
+      claimsHistory,
     });
   } catch (err) {
     // If Redis is not yet configured or fails, fallback to closed state gracefully
@@ -94,6 +118,7 @@ export default async function handler(req: ExtendedRequest, res: ExtendedRespons
       status: 'success',
       isOpen: false,
       totalClaims: 0,
+      claimsHistory: [],
       notice: err instanceof Error ? err.message : 'Database unavailable',
     });
   }

@@ -1,9 +1,9 @@
-// ../notchi-web-risu/src/server/assets.ts
+// src/server/assets.ts
 import fs from "node:fs";
 import path from "node:path";
 import { get as getBlob } from "@vercel/blob";
 
-// ../notchi-web-risu/src/lib/redis.ts
+// src/lib/redis.ts
 import { Redis } from "@upstash/redis";
 var redisInstance = null;
 function getRedis() {
@@ -23,7 +23,7 @@ function getRedis() {
   return redisInstance;
 }
 
-// ../notchi-web-risu/src/lib/entitlement.ts
+// src/lib/entitlement.ts
 import { sign, verify, createPrivateKey, createPublicKey } from "node:crypto";
 function normalizeKey(keyStr) {
   let trimmed = (keyStr || "").trim();
@@ -68,7 +68,7 @@ function verifyEntitlement(token, keyPem) {
   }
 }
 
-// ../notchi-web-risu/src/lib/security.ts
+// src/lib/security.ts
 import { createHmac } from "node:crypto";
 function getClientIp(headers) {
   const getHeader = (name) => {
@@ -101,7 +101,7 @@ async function checkRateLimit(redis, key, maxLimit, ttlSeconds) {
   };
 }
 
-// ../notchi-web-risu/src/server/assets.ts
+// src/server/assets.ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
