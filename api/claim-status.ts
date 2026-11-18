@@ -19,18 +19,33 @@ async function checkMilestoneAchieved(redis?: ReturnType<typeof getRedis>): Prom
     if (process.env.GITHUB_TOKEN) {
       headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
     }
-    const res = await fetch('https://api.github.com/repos/Risunity/Notchi/releases?per_page=100', { headers });
-    if (!res.ok) return false;
-    const data = await res.json();
-    if (!Array.isArray(data)) return false;
-    let total = 0;
-    for (const r of data) {
-      for (const a of (r.assets || [])) {
-        if (!a.name?.endsWith('.sha256') && !a.name?.endsWith('.md5')) {
-          total += (a.download_count || 0);
+
+    const owner = process.env.GITHUB_OWNER || 'Risunity';
+    const pcRepo = process.env.GITHUB_REPO || 'Notchi';
+    const mobileRepo = process.env.MOBILE_GITHUB_REPO || 'notchi-mobile';
+
+    const [pcRes, mobileRes] = await Promise.all([
+      fetch(`https://api.github.com/repos/${owner}/${pcRepo}/releases?per_page=100`, { headers }),
+      fetch(`https://api.github.com/repos/${owner}/${mobileRepo}/releases?per_page=100`, { headers }),
+    ]);
+
+    const countDownloads = async (res: Response) => {
+      if (!res.ok) return 0;
+      const data = await res.json();
+      if (!Array.isArray(data)) return 0;
+      let sum = 0;
+      for (const r of data) {
+        for (const a of (r.assets || [])) {
+          if (!a.name?.endsWith('.sha256') && !a.name?.endsWith('.md5')) {
+            sum += (a.download_count || 0);
+          }
         }
       }
-    }
+      return sum;
+    };
+
+    const total = (await countDownloads(pcRes)) + (await countDownloads(mobileRes));
+
     if (total >= 100) {
       if (redis) {
         // Begitu target 100 tercapai, kunci status claims:open = '1' permanen di Redis

@@ -2,6 +2,7 @@
 import { localizePath, t } from '../../i18n';
 import type { Locale } from '../../i18n';
 import { getReleases } from '../../lib/github';
+import { getMobileReleases } from '../../lib/mobile';
 import NotchiClaimReward from '../react/NotchiClaimReward';
 import { ArrowLeft, Gift } from 'lucide-react';
 
@@ -13,15 +14,22 @@ const { locale } = Astro.props;
 const homeHref = localizePath('/', locale);
 const isId = locale === 'id';
 
-const releases = await getReleases();
-const totalDownloads = releases.reduce((sum, release) => {
-  return (
-    sum +
-    release.assets.reduce((assetSum, asset) => {
-      return asset.kind !== 'checksum' ? assetSum + asset.downloadCount : assetSum;
-    }, 0)
-  );
-}, 0);
+const [releases, mobileReleases] = await Promise.all([
+  getReleases(),
+  getMobileReleases(),
+]);
+
+const sumReleaseDownloads = (list: typeof releases) =>
+  list.reduce((sum, release) => {
+    return (
+      sum +
+      release.assets.reduce((assetSum, asset) => {
+        return asset.kind !== 'checksum' ? assetSum + asset.downloadCount : assetSum;
+      }, 0)
+    );
+  }, 0);
+
+const totalDownloads = sumReleaseDownloads(releases) + sumReleaseDownloads(mobileReleases);
 
 const siteKey = process.env.PUBLIC_TURNSTILE_SITE_KEY || '';
 ---
