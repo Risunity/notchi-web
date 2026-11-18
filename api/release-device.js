@@ -1,4 +1,4 @@
-// src/lib/redis.ts
+// ../notchi-web-risu/src/lib/redis.ts
 import { Redis } from "@upstash/redis";
 var redisInstance = null;
 function getRedis() {
@@ -18,7 +18,7 @@ function getRedis() {
   return redisInstance;
 }
 
-// src/lib/code.ts
+// ../notchi-web-risu/src/lib/code.ts
 function normalizeClaimCode(input) {
   return (input || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
 }
@@ -28,7 +28,7 @@ function isValidCodeFormat(code) {
   return regex.test(normalized);
 }
 
-// src/server/release-device.ts
+// ../notchi-web-risu/src/server/release-device.ts
 async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");

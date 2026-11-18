@@ -1,4 +1,4 @@
-// src/lib/redis.ts
+// ../notchi-web-risu/src/lib/redis.ts
 import { Redis } from "@upstash/redis";
 var redisInstance = null;
 function getRedis() {
@@ -18,7 +18,7 @@ function getRedis() {
   return redisInstance;
 }
 
-// src/server/claim-status.ts
+// ../notchi-web-risu/src/server/claim-status.ts
 async function checkMilestoneAchieved(redis) {
   try {
     const headers = {

@@ -56,15 +56,12 @@ export async function checkRateLimit(
  */
 export async function verifyTurnstileToken(token: string, clientIp?: string): Promise<boolean> {
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  // Jika Turnstile secret key belum dikonfigurasi di environment, lewati verifikasi (graceful bypass)
   if (!secretKey) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[security] TURNSTILE_SECRET_KEY not set, bypassing in development');
-      return true;
-    }
-    return false;
+    return true;
   }
 
-  if (!token) return false;
+  if (!token || token === 'dev-bypass') return false;
 
   try {
     const formData = new URLSearchParams();

@@ -1,4 +1,4 @@
-// src/lib/redis.ts
+// ../notchi-web-risu/src/lib/redis.ts
 import { Redis } from "@upstash/redis";
 var redisInstance = null;
 function getRedis() {
@@ -18,10 +18,10 @@ function getRedis() {
   return redisInstance;
 }
 
-// src/lib/gacha.ts
+// ../notchi-web-risu/src/lib/gacha.ts
 import { randomInt } from "node:crypto";
 
-// src/lib/rewards-catalog.ts
+// ../notchi-web-risu/src/lib/rewards-catalog.ts
 var REWARDS_CATALOG = [
   // --- 1. LEGENDARY (Limit 7 di dunia) ---
   {
@@ -108,7 +108,7 @@ var REWARDS_CATALOG = [
   }
 ];
 
-// src/lib/gacha.ts
+// ../notchi-web-risu/src/lib/gacha.ts
 function pickWeightedItem(candidates) {
   if (candidates.length === 0) {
     throw new Error("No candidate rewards available");
@@ -144,7 +144,7 @@ async function rollGachaReward(redis) {
   return REWARDS_CATALOG[0];
 }
 
-// src/lib/code.ts
+// ../notchi-web-risu/src/lib/code.ts
 import { randomInt as randomInt2 } from "node:crypto";
 var CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
 function generateClaimCode() {
@@ -153,7 +153,7 @@ function generateClaimCode() {
   return `NOTCHI-${seg1}-${seg2}`;
 }
 
-// src/lib/security.ts
+// ../notchi-web-risu/src/lib/security.ts
 import { createHmac } from "node:crypto";
 function getClientIp(headers) {
   const getHeader = (name) => {
@@ -188,13 +188,9 @@ async function checkRateLimit(redis, key, maxLimit, ttlSeconds) {
 async function verifyTurnstileToken(token, clientIp) {
   const secretKey = process.env.TURNSTILE_SECRET_KEY;
   if (!secretKey) {
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[security] TURNSTILE_SECRET_KEY not set, bypassing in development");
-      return true;
-    }
-    return false;
+    return true;
   }
-  if (!token) return false;
+  if (!token || token === "dev-bypass") return false;
   try {
     const formData = new URLSearchParams();
     formData.append("secret", secretKey);
@@ -213,7 +209,7 @@ async function verifyTurnstileToken(token, clientIp) {
   }
 }
 
-// src/server/claim.ts
+// ../notchi-web-risu/src/server/claim.ts
 async function checkMilestoneAchieved(redis) {
   try {
     const headers = {
