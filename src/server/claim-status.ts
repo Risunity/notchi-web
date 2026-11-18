@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getRedis } from '../src/lib/redis.ts';
+import { getRedis } from '../lib/redis.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   query?: Record<string, string>;

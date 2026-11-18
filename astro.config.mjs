@@ -33,15 +33,15 @@ function apiDevMiddleware() {
             /** @type {any} */
             let mod;
             if (urlPath === 'claim-status') {
-              mod = await import('./api/claim-status.ts');
+              mod = await import('./api/claim-status.js');
             } else if (urlPath === 'claim') {
-              mod = await import('./api/claim.ts');
+              mod = await import('./api/claim.js');
             } else if (urlPath === 'redeem') {
-              mod = await import('./api/redeem.ts');
+              mod = await import('./api/redeem.js');
             } else if (urlPath === 'assets') {
-              mod = await import('./api/assets.ts');
+              mod = await import('./api/assets.js');
             } else if (urlPath === 'release-device') {
-              mod = await import('./api/release-device.ts');
+              mod = await import('./api/release-device.js');
             }
             if (mod?.default) {
               let body = '';

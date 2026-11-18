@@ -2,9 +2,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { get as getBlob } from '@vercel/blob';
-import { getRedis } from '../src/lib/redis.ts';
-import { verifyEntitlement } from '../src/lib/entitlement.ts';
-import { getClientIp, hashIp, checkRateLimit } from '../src/lib/security.ts';
+import { getRedis } from '../lib/redis.ts';
+import { verifyEntitlement } from '../lib/entitlement.ts';
+import { getClientIp, hashIp, checkRateLimit } from '../lib/security.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   headers: Record<string, string | string[] | undefined>;

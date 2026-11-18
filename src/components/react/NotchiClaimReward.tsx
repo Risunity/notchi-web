@@ -72,7 +72,16 @@ export default function NotchiClaimReward({
         const res = await fetch("/api/claim-status");
         const reached = totalDownloads >= (milestoneTarget || 100);
         if (res.ok) {
-          const json = await res.json();
+          let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error(
+          isId
+            ? "Server sedang mengalami gangguan. Silakan coba lagi nanti."
+            : "A server error occurred. Please try again later."
+        );
+      }
           setIsOpen(Boolean(json.isOpen) || reached);
         } else {
           setIsOpen(reached);
@@ -132,7 +141,16 @@ export default function NotchiClaimReward({
         body: JSON.stringify({ turnstileToken: turnstileToken || "dev-bypass" }),
       });
 
-      const json = await res.json();
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error(
+          isId
+            ? "Server sedang mengalami gangguan. Silakan coba lagi nanti."
+            : "A server error occurred. Please try again later."
+        );
+      }
 
       if (!res.ok || !json.success) {
         if (json.error === "already_claimed") {

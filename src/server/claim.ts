@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { getRedis } from '../src/lib/redis.ts';
-import { rollGachaReward } from '../src/lib/gacha.ts';
-import { generateClaimCode } from '../src/lib/code.ts';
-import { getClientIp, hashIp, checkRateLimit, verifyTurnstileToken } from '../src/lib/security.ts';
+import { getRedis } from '../lib/redis.ts';
+import { rollGachaReward } from '../lib/gacha.ts';
+import { generateClaimCode } from '../lib/code.ts';
+import { getClientIp, hashIp, checkRateLimit, verifyTurnstileToken } from '../lib/security.ts';
 
 interface ExtendedRequest extends IncomingMessage {
   body?: unknown;
